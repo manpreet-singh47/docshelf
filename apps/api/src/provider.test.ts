@@ -30,7 +30,19 @@ describe('Gemini streaming provider',()=>{
   }
   expect(result).toBe('Gemini streaming');
   const request=vi.mocked(fetch).mock.calls[0];
-  expect(String(request[0])).toContain('/models/gemini-3.8-flash:streamGenerateContent');
+  expect(String(request[0])).toContain('/models/gemini-3.1-flash-lite:streamGenerateContent');
+ });
+
+ it('falls back when the configured Gemini model is temporarily unavailable',async()=>{
+  const sseData='data: {"candidates":[{"content":{"parts":[{"text":"ready"}]}}]}\n\ndata: [DONE]\n\n';
+  const fetchMock=vi.fn()
+   .mockResolvedValueOnce(new Response('busy',{status:503}))
+   .mockResolvedValueOnce(new Response(sseData,{status:200}));
+  vi.stubGlobal('fetch',fetchMock);
+  let result='';
+  for await(const part of new GeminiProvider('fake-key','gemini-3.8-flash').stream('context','question',new AbortController().signal))result+=part;
+  expect(result).toBe('ready');
+  expect(String(fetchMock.mock.calls[1][0])).toContain('/models/gemini-3.1-flash-lite:streamGenerateContent');
  });
 
  it('falls back to OllamaProvider when no GEMINI_API_KEY is configured', ()=>{

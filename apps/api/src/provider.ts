@@ -14,9 +14,9 @@ export class OllamaProvider implements ChatProvider {
 export class GeminiProvider implements ChatProvider {
  private apiKey: string;
  private model: string;
- constructor(apiKey = process.env.GEMINI_API_KEY || '', model = process.env.GEMINI_CHAT_MODEL || 'gemini-3.8-flash') {
+ constructor(apiKey = process.env.GEMINI_API_KEY || '', model = process.env.GEMINI_CHAT_MODEL || 'gemini-3.1-flash-lite') {
   this.apiKey = apiKey.trim();
-  this.model = model === 'gemini-2.0-flash' || model === 'gemini-2.0-flash-001' ? 'gemini-3.8-flash' : model;
+  this.model = model === 'gemini-2.0-flash' || model === 'gemini-2.0-flash-001' ? 'gemini-3.1-flash-lite' : model;
   if (!this.apiKey) throw new Error('GEMINI_API_KEY is required for GeminiProvider');
  }
 
@@ -34,20 +34,28 @@ export class GeminiProvider implements ChatProvider {
    }
   };
 
-  const response = await fetch(
-   `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:streamGenerateContent?alt=sse&key=${this.apiKey}`,
-   {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    signal,
-    body: JSON.stringify(body)
-   }
-  );
-  if (!response.ok || !response.body) {
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL?.trim() || 'gemini-3.1-flash-lite';
+  const models = [...new Set([this.model, fallbackModel])];
+  let response: Response | null = null;
+  let lastStatus = 503;
+  for (const model of models) {
+   response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${this.apiKey}`,
+    {
+     method: 'POST',
+     headers: { 'content-type': 'application/json' },
+     signal,
+     body: JSON.stringify(body)
+    }
+   );
+   if (response.ok && response.body) break;
+   lastStatus = response.status;
    const err = await response.text().catch(() => '');
-   console.error(`Gemini chat failed (${response.status}):`, err);
-   throw Error(`Model unavailable (${response.status})`);
+   console.error(`Gemini chat failed for ${model} (${response.status}):`, err);
+   if (![404,429,503].includes(response.status)) break;
+   response = null;
   }
+  if (!response?.ok || !response.body) throw Error(`Model unavailable (${lastStatus})`);
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = '';
