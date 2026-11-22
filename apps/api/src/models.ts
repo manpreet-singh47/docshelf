@@ -4,6 +4,9 @@ export const User=model('User',new Schema({email:{type:String,unique:true,index:
 const documentSchema=new Schema({owner:{type:Schema.Types.ObjectId,ref:'User',index:true},name:String,path:String,hash:String,size:Number,status:{type:String,default:'queued'},error:String},{timestamps:true});
 documentSchema.index({owner:1,hash:1},{unique:true});
 export const Document=model('Document',documentSchema);
+// Keep uploaded bytes separate from document metadata. Production uses this
+// collection because free cloud instances do not provide durable local disks.
+export const DocumentFile=model('DocumentFile',new Schema({owner:{type:Schema.Types.ObjectId,index:true},document:{type:Schema.Types.ObjectId,unique:true,index:true},data:{type:Buffer,required:true}},{timestamps:true}));
 export const Chunk=model('Chunk',new Schema({owner:{type:Schema.Types.ObjectId,index:true},document:{type:Schema.Types.ObjectId,index:true},page:Number,text:String,embedding:[Number]}));
 export const Conversation=model('Conversation',new Schema({owner:{type:Schema.Types.ObjectId,index:true},title:String,messages:[{role:String,content:String,citations:[{document:String,name:String,page:Number,number:Number,kind:String}]}]},{timestamps:true}));
 export const Session=model('Session',new Schema({owner:{type:Schema.Types.ObjectId,index:true},tokenHash:{type:String,unique:true},expiresAt:{type:Date,index:{expires:0}}},{timestamps:true}));
