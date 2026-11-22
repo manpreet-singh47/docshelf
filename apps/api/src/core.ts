@@ -7,22 +7,25 @@ export function cosine(a:number[],b:number[]) { if(a.length!==b.length || !a.len
 export const hash=(data:Buffer)=>createHash('sha256').update(data).digest('hex');
 export function validFile(name:string,data:Buffer) { const ext=name.toLowerCase().split('.').pop(); if(ext==='pdf') return data.subarray(0,5).toString()==='%PDF-'; if(ext==='docx')return data.length>=22&&data.subarray(0,4).equals(Buffer.from([0x50,0x4b,0x03,0x04]))&&data.lastIndexOf(Buffer.from([0x50,0x4b,0x05,0x06]))>=data.length-65557;if(ext==='txt'||ext==='md') return !data.includes(0) && !data.toString('utf8').includes('\ufffd'); return false; }
 export async function embed(text:string):Promise<number[]> {
-  if (process.env.GEMINI_API_KEY) {
-    const apiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  if (geminiKey) {
     const model = process.env.GEMINI_EMBED_MODEL || 'text-embedding-004';
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          model: `models/${model}`,
           content: { parts: [{ text }] }
         }),
         signal: AbortSignal.timeout(30000)
       }
     );
-    if (!response.ok) throw Error('Embedding model unavailable');
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error(`Gemini embedding failed (${response.status}):`, errText);
+      throw Error(`Embedding service failed: ${response.status} ${errText.slice(0, 150)}`);
+    }
     const data = await response.json() as { embedding?: { values?: number[] } };
     const vector = data?.embedding?.values;
     if (!Array.isArray(vector) || vector.length === 0 || vector.length > 4096 || !vector.every((v: unknown) => typeof v === 'number' && Number.isFinite(v))) {

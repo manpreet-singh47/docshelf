@@ -15,7 +15,7 @@ export class GeminiProvider implements ChatProvider {
  private apiKey: string;
  private model: string;
  constructor(apiKey = process.env.GEMINI_API_KEY || '', model = process.env.GEMINI_CHAT_MODEL || 'gemini-2.0-flash') {
-  this.apiKey = apiKey;
+  this.apiKey = apiKey.trim();
   this.model = model;
   if (!this.apiKey) throw new Error('GEMINI_API_KEY is required for GeminiProvider');
  }
@@ -43,7 +43,11 @@ export class GeminiProvider implements ChatProvider {
     body: JSON.stringify(body)
    }
   );
-  if (!response.ok || !response.body) throw new Error('Model unavailable');
+  if (!response.ok || !response.body) {
+   const err = await response.text().catch(() => '');
+   console.error(`Gemini chat failed (${response.status}):`, err);
+   throw Error(`Model unavailable (${response.status})`);
+  }
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = '';
@@ -75,7 +79,7 @@ export class GeminiProvider implements ChatProvider {
 }
 
 export function getChatProvider(): ChatProvider {
- if (process.env.GEMINI_API_KEY) {
+ if (process.env.GEMINI_API_KEY?.trim()) {
   return new GeminiProvider();
  }
  return new OllamaProvider();
