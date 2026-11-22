@@ -1,0 +1,20 @@
+import React from 'react';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
+import {cleanup,render,screen} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import {MemoryRouter} from 'react-router-dom';
+import axe from 'axe-core';
+import {App} from './App';
+
+beforeEach(()=>{const values=new Map<string,string>();Object.defineProperty(window,'localStorage',{configurable:true,value:{getItem:(key:string)=>values.get(key)||null,setItem:(key:string,value:string)=>values.set(key,value),clear:()=>values.clear()}});vi.stubGlobal('fetch',vi.fn(async()=>new Response('{}',{status:401})));});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();window.localStorage.clear()});
+function renderApp(path='/'){return render(<MemoryRouter initialEntries={[path]}><App/></MemoryRouter>)}
+async function checkAccessibility(container:HTMLElement){const results=await axe.run(container,{rules:{'color-contrast':{enabled:false}}});expect(results.violations.map(item=>({id:item.id,description:item.description,nodes:item.nodes.map(node=>node.html)}))).toEqual([])}
+describe('workspace accessibility and navigation',()=>{
+ it('opens the DocShelf workspace from the landing page',async()=>{const user=userEvent.setup();const {container}=renderApp();expect(screen.getByRole('heading',{name:/your knowledge/i,level:1})).toBeTruthy();expect(container.textContent).toContain('DocShelf');expect(container.textContent).not.toMatch(/Cortex/i);await checkAccessibility(container);await user.click(screen.getByRole('button',{name:'Explore DocShelf'}));expect(await screen.findByRole('heading',{name:/good to have you here/i})).toBeTruthy();expect(container.textContent).toContain('DocShelf');expect(container.textContent).not.toMatch(/Cortex/i)});
+ it('opens sign-in with accessible labels and returns focus on Escape',async()=>{const user=userEvent.setup();renderApp('/workspace');const trigger=screen.getByRole('button',{name:/Guest workspace.*Sign in to save your work/});await user.click(trigger);const dialog=await screen.findByRole('dialog',{name:'Welcome back'});expect(dialog.contains(screen.getByLabelText('Email'))).toBe(true);expect(document.activeElement).toBe(screen.getByLabelText('Email'));await checkAccessibility(dialog);await user.keyboard('{Escape}');expect(screen.queryByRole('dialog')).toBeNull();expect(document.activeElement).toBe(trigger)});
+ it('provides browser autocomplete hints for sign-up',async()=>{const user=userEvent.setup();renderApp('/workspace');await user.click(screen.getByRole('button',{name:/Guest workspace.*Sign in to save your work/}));await user.click(screen.getByRole('button',{name:'Create an account'}));expect(screen.getByLabelText('Name').getAttribute('autocomplete')).toBe('name');expect(screen.getByLabelText('Email').getAttribute('autocomplete')).toBe('email');expect(screen.getByLabelText('Password').getAttribute('autocomplete')).toBe('new-password')});
+ it('keeps keyboard focus within the sign-in dialog',async()=>{const user=userEvent.setup();renderApp('/workspace');await user.click(screen.getByRole('button',{name:/Guest workspace.*Sign in to save your work/}));const dialog=await screen.findByRole('dialog',{name:'Welcome back'});await user.keyboard('{Shift>}{Tab}{/Shift}');expect(document.activeElement).toBe(screen.getByRole('button',{name:'Close'}));await user.keyboard('{Shift>}{Tab}{/Shift}');expect(document.activeElement).toBe(screen.getByRole('button',{name:'Create an account'}));await user.tab();expect(document.activeElement).toBe(screen.getByRole('button',{name:'Close'}));expect(dialog.contains(document.activeElement)).toBe(true)});
+ it('has accessible names and landmarks on the overview',async()=>{const {container}=renderApp('/workspace');await checkAccessibility(container)});
+ it('allows keyboard access to the search page and its input',async()=>{const user=userEvent.setup();renderApp('/workspace');const buttons=screen.getAllByRole('button',{name:/Search/});await user.click(buttons[0]);expect(await screen.findByRole('heading',{name:/^Search\s*\./i})).toBeTruthy();expect(screen.getByRole('textbox',{name:'Search documents'})).toBeTruthy()});
+});

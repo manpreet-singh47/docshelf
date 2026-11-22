@@ -1,0 +1,22 @@
+{
+  "name": "cortex-workspace",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,worker,web -c cyan,magenta,green \"npm run dev -w @cortex/api\" \"npm run worker -w @cortex/api\" \"npm run dev -w @cortex/web\"",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces",
+    "check:api": "node scripts/check-openapi.mjs",
+    "evaluate:retrieval": "node scripts/evaluate-retrieval.mjs",
+    "evaluate:rag": "node scripts/evaluate-rag.mjs"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
+    "concurrently": "^9.1.2",
+    "pdf-lib": "^1.17.1",
+    "typescript": "^5.7.3"
+  }
+}

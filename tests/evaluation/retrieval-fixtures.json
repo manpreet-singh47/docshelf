@@ -1,0 +1,14 @@
+{
+  "documents": [
+    {"id":"orion", "text":"Project Orion will launch on 14 May. The release owner is Maya. The team must complete security review before launch."},
+    {"id":"river", "text":"The River research group collected samples from the north bank on 3 June. The samples are stored in freezer B."},
+    {"id":"atlas", "text":"Atlas onboarding includes a two-week training period. New employees should contact the people operations team for access."},
+    {"id":"garden", "text":"The community garden waters seedlings every Tuesday morning. Tomatoes should be planted in the sunny southern beds."}
+  ],
+  "questions": [
+    {"question":"Who owns the Orion release?", "expected":"orion"},
+    {"question":"Where are the north bank samples kept?", "expected":"river"},
+    {"question":"How long is the Atlas training?", "expected":"atlas"},
+    {"question":"When are seedlings watered?", "expected":"garden"}
+  ]
+}

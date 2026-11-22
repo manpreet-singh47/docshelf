@@ -1,0 +1,66 @@
+services:
+  mongo:
+    image: mongo:7
+    ports: ['127.0.0.1:27017:27017']
+    volumes: ['mongo_data:/data/db']
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand("ping")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    ports: ['127.0.0.1:6379:6379']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.api
+    environment: &app_env
+      NODE_ENV: production
+      COOKIE_SECURE: "false"
+      TRUST_PROXY: "true"
+      EXPOSE_INSTANCE_ID: "true"
+      PORT: 4000
+      WEB_ORIGIN: http://localhost:8080
+      MONGODB_URI: mongodb://mongo:27017/cortex
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      OLLAMA_URL: http://host.docker.internal:11434
+      STORAGE_DIR: /data
+    volumes: ['documents:/data']
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/api/v1/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      mongo: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  worker:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.api
+    command: ['node', 'dist/worker.js']
+    environment: *app_env
+    volumes: ['documents:/data']
+    depends_on:
+      mongo: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  web:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.web
+    ports: ['127.0.0.1:8080:80']
+    depends_on:
+      api: {condition: service_healthy}
+volumes:
+  mongo_data:
+  documents:
