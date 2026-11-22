@@ -3,7 +3,7 @@ services:
     name: docshelf-backend
     env: node
     plan: free
-    buildCommand: npm install && npm run build -w @cortex/api
+    buildCommand: npm install --include=dev && npm run build -w @cortex/api
     startCommand: node apps/api/dist/combined.js
     envVars:
       - key: NODE_ENV
@@ -20,4 +20,3 @@ services:
         sync: false
       - key: WEB_ORIGIN
         sync: false
-
