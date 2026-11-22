@@ -14,9 +14,9 @@ export class OllamaProvider implements ChatProvider {
 export class GeminiProvider implements ChatProvider {
  private apiKey: string;
  private model: string;
- constructor(apiKey = process.env.GEMINI_API_KEY || '', model = process.env.GEMINI_CHAT_MODEL || 'gemini-2.0-flash') {
+ constructor(apiKey = process.env.GEMINI_API_KEY || '', model = process.env.GEMINI_CHAT_MODEL || 'gemini-3.8-flash') {
   this.apiKey = apiKey.trim();
-  this.model = model;
+  this.model = model === 'gemini-2.0-flash' || model === 'gemini-2.0-flash-001' ? 'gemini-3.8-flash' : model;
   if (!this.apiKey) throw new Error('GEMINI_API_KEY is required for GeminiProvider');
  }
 

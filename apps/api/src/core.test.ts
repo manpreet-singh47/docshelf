@@ -10,9 +10,12 @@ it('rejects malformed embedding responses',async()=>{vi.stubGlobal('fetch',vi.fn
 it('supports Gemini embeddings when GEMINI_API_KEY is provided',async()=>{
  process.env.GEMINI_API_KEY='test-key';
  try {
-  vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({embedding:{values:[0.1,0.2,0.3]}}),{status:200})));
+  const fetchMock=vi.fn(async()=>new Response(JSON.stringify({embedding:{values:[0.1,0.2,0.3]}}),{status:200}));
+  vi.stubGlobal('fetch',fetchMock);
   const vector = await embed('hello gemini');
   expect(vector).toEqual([0.1,0.2,0.3]);
+  expect(String(fetchMock.mock.calls[0][0])).toContain('/models/gemini-embedding-2:embedContent');
+  expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({output_dimensionality:768});
  } finally {
   delete process.env.GEMINI_API_KEY;
   vi.unstubAllGlobals();

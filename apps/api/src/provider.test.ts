@@ -29,6 +29,8 @@ describe('Gemini streaming provider',()=>{
    result+=part;
   }
   expect(result).toBe('Gemini streaming');
+  const request=vi.mocked(fetch).mock.calls[0];
+  expect(String(request[0])).toContain('/models/gemini-3.8-flash:streamGenerateContent');
  });
 
  it('falls back to OllamaProvider when no GEMINI_API_KEY is configured', ()=>{

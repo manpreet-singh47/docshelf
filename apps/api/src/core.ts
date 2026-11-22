@@ -9,14 +9,22 @@ export function validFile(name:string,data:Buffer) { const ext=name.toLowerCase(
 export async function embed(text:string):Promise<number[]> {
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
   if (geminiKey) {
-    const model = process.env.GEMINI_EMBED_MODEL || 'text-embedding-004';
+    const configuredModel = process.env.GEMINI_EMBED_MODEL?.trim();
+    const model = !configuredModel || configuredModel === 'text-embedding-004'
+      ? 'gemini-embedding-2'
+      : configuredModel;
+    const outputDimensionality = Number(process.env.GEMINI_EMBED_DIMENSIONS || 768);
+    if (!Number.isInteger(outputDimensionality) || outputDimensionality < 128 || outputDimensionality > 3072) {
+      throw Error('GEMINI_EMBED_DIMENSIONS must be an integer from 128 to 3072');
+    }
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          content: { parts: [{ text }] }
+          content: { parts: [{ text }] },
+          output_dimensionality: outputDimensionality
         }),
         signal: AbortSignal.timeout(30000)
       }
